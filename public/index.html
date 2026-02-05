@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AVMoic – Chat + Giọng nói</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --surface: #1a1a1f;
+      --border: #2a2a32;
+      --text: #e8e8ed;
+      --text-muted: #8888a0;
+      --accent: #7c5cff;
+      --accent-hover: #9378ff;
+      --user-bubble: #2d2d38;
+      --bot-bubble: #252530;
+      --success: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    header p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.5rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 200px;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 0.75rem 1rem;
+      border-radius: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--user-bubble);
+      border: 1px solid var(--border);
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+    }
+    .msg .content {
+      flex: 1;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg .meta {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .btn-speak {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn-speak:hover {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-speak:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-speak.playing {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-speak svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    #form {
+      padding: 1rem 1.5rem 1.5rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .input-wrap {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    #input {
+      flex: 1;
+      min-height: 44px;
+      max-height: 120px;
+      padding: 0.65rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.95rem;
+      resize: none;
+    }
+    #input::placeholder {
+      color: var(--text-muted);
+    }
+    #input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    #send {
+      flex-shrink: 0;
+      height: 44px;
+      padding: 0 1.25rem;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #send:hover {
+      background: var(--accent-hover);
+    }
+    #send:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .typing {
+      padding: 0.75rem 1rem;
+      border-radius: 14px;
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .error {
+      padding: 0.75rem 1rem;
+      border-radius: 14px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      align-self: flex-start;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AVMoic</h1>
+    <p>Nghe câu trả lời bằng giọng Murf</p>
+  </header>
+
+  <main id="chat"></main>
+
+  <form id="form">
+    <div class="input-wrap">
+      <textarea id="input" rows="1" placeholder="Nhập tin nhắn..." autocomplete="off"></textarea>
+      <button type="submit" id="send">Gửi</button>
+    </div>
+  </form>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+
+    let history = [];
+    let currentAudio = null;
+
+    function scrollToBottom() {
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addMessage(role, text, messageId = null) {
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      div.dataset.id = messageId ?? "";
+
+      const content = document.createElement("div");
+      content.className = "content";
+      content.textContent = text;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = role === "user" ? "Bạn" : "Gemini";
+
+      if (role === "bot") {
+        const wrap = document.createElement("div");
+        wrap.style.display = "flex";
+        wrap.style.gap = "0.5rem";
+        wrap.style.alignItems = "flex-start";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-speak";
+        btn.title = "Phát âm thanh";
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+        btn.addEventListener("click", () => playTTS(text, btn));
+
+        wrap.appendChild(content);
+        wrap.appendChild(btn);
+        div.appendChild(wrap);
+      } else {
+        div.appendChild(content);
+      }
+      div.appendChild(meta);
+      chat.appendChild(div);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      const el = document.createElement("div");
+      el.className = "typing";
+      el.id = "typing-indicator";
+      el.textContent = "Đang suy nghĩ...";
+      chat.appendChild(el);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      document.getElementById("typing-indicator")?.remove();
+    }
+
+    function showError(msg) {
+      const el = document.createElement("div");
+      el.className = "error";
+      el.textContent = msg;
+      chat.appendChild(el);
+      scrollToBottom();
+    }
+
+    async function playTTS(text, btn) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+      const allBtns = chat.querySelectorAll(".btn-speak");
+      allBtns.forEach((b) => b.classList.remove("playing"));
+      btn.classList.add("playing");
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: text.slice(0, 3000),
+            voiceId: "Lia",
+            format: "MP3",
+            speed: 0.95,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || data.detail || "Lỗi TTS");
+
+        const audio = new Audio("data:audio/mp3;base64," + data.audio);
+        currentAudio = audio;
+        audio.play();
+        audio.onended = () => {
+          btn.classList.remove("playing");
+          btn.disabled = false;
+          currentAudio = null;
+        };
+        audio.onerror = () => {
+          btn.classList.remove("playing");
+          btn.disabled = false;
+          currentAudio = null;
+          showError("Không thể phát âm thanh.");
+        };
+      } catch (e) {
+        btn.classList.remove("playing");
+        btn.disabled = false;
+        showError(e.message || "Lỗi khi gọi Murf TTS.");
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = "";
+      addMessage("user", text);
+      history.push({ role: "user", text });
+      sendBtn.disabled = true;
+      showTyping();
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, history: history.slice(-20) }),
+        });
+        const data = await res.json();
+        hideTyping();
+
+        if (!res.ok) {
+          showError(data.error || data.detail || "Lỗi từ server");
+          return;
+        }
+
+        const reply = data.text;
+        addMessage("bot", reply);
+        history.push({ role: "model", text: reply });
+      } catch (e) {
+        hideTyping();
+        showError(e.message || "Lỗi kết nối.");
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+  </script>
+</body>
+</html>
