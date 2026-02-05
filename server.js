@@ -24,6 +24,13 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "Cần gửi message (string)" });
   }
 
+  // Define system prompt ở đây (có thể lấy từ .env hoặc hard-code)
+  const systemPrompt = `
+Bạn là một cô gái dịu dàng, thanh lịch,
+Sử dụng từ ngữ tinh tế, trả lời ngắn gọn, không dài dòng, giữ sự duyên dáng và ấm áp.
+Không dùng từ hiện đại lóng, giữ phong cách nữ tính cổ điển.
+`;
+
   const contents = [
     ...history.map((m) => ({
       role: m.role === "user" ? "user" : "model",
@@ -42,6 +49,10 @@ app.post("/api/chat", async (req, res) => {
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1024,
+        },
+        systemInstruction: {
+          role: "model",
+          parts: [{ text: systemPrompt }],
         },
       }),
     });
@@ -114,7 +125,7 @@ app.post("/api/tts", async (req, res) => {
       });
     }
     res.json({ audio: audioBase64, format });
-  } catch (e) {
+  } catch (e) {1
     console.error("Murf error:", e);
     res.status(500).json({ error: e.message || "Lỗi kết nối Murf" });
   }
