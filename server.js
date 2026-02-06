@@ -159,10 +159,85 @@ app.post("/api/tts/active", async (req, res) => {
   }
 });
 
+async function fetchFptAudioAsync(url, timeoutMs = 15000) {
+  const start = Date.now();
+
+  while (true) {
+    const res = await fetch(url);
+
+    // Khi audio sẵn sàng → FPT trả binary
+    if (res.ok && res.headers.get("content-type")?.includes("audio")) {
+      const arrayBuffer = await res.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    }
+
+    // Nếu chưa sẵn sàng → chờ rồi retry
+    if (Date.now() - start > timeoutMs) {
+      throw new Error("Timeout khi chờ FPT tạo audio");
+    }
+
+    await new Promise((r) => setTimeout(r, 800));
+  }
+}
+
+
+
+app.post("/api/tts", async (req, res) => {
+  if (!MURF_API_KEY) {
+    return res.status(500).json({ error: "Thiếu MURF_API_KEY trong .env" });
+  }1
+  const { text, voiceId = "Lia", format = "MP3", speed= 1} = req.body;
+  if (!text || typeof text !== "string") {
+    return res.status(400).json({ error: "Cần gửi text (string)" });
+  }
+
+  const textToSpeak = text.slice(0, 3000);
+  const cleanText = sanitizeVietnameseText(textToSpeak);
+  try {
+    const response = await fetch("https://api.murf.ai/v1/speech/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": MURF_API_KEY,
+      },
+      body: JSON.stringify({
+        text: cleanText,
+        voiceId,
+        locale: "vi-VN",
+        format,
+        speed,
+        encodeAsBase64: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return res.status(response.status).json({
+        error: "Lỗi Murf API",
+        detail: err,
+      });
+    }
+
+    const data = await response.json();
+    const audioBase64 = data?.encodedAudio;
+    if (!audioBase64) {
+      return res.status(500).json({
+        error: "Murf không trả về audio",
+        raw: data,
+      });
+    }
+    res.json({ audio: audioBase64, format });
+  } catch (e) {1
+    console.error("Murf error:", e);
+    res.status(500).json({ error: e.message || "Lỗi kết nối Murf" });
+  }
+});
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 app.listen(PORT, () => {
-  if (!FPT_API_KEY) console.warn("Cảnh báo: Chưa cấu hình FPT_API_KEY (console.fpt.ai)");
-});
+  if (!GEMINI_API_KEY) console.warn("Cảnh báo: Chưa cấu hình GEMINI_API_KEY");
+  if (!MURF_API_KEY) console.warn("Cảnh báo: Chưa cấu hình MURF_API_KEY");
+});1
