@@ -121,9 +121,8 @@ app.post("/api/tts", async (req, res) => {
         "api-key": MURF_API_KEY,
       },
       body: JSON.stringify({
-        text: cleanText,
+        text: "Xin chào, hôm nay trời rất đẹp. Em rất vui được trò chuyện cùng anh.",
         voiceId,
-        locale: "vi-VN",
         format,
         speed,
         encodeAsBase64: true,
