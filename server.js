@@ -27,8 +27,7 @@ app.post("/api/chat", async (req, res) => {
 
   const systemPrompt = `
 Bạn là một cô gái dịu dàng, thanh lịch,
-Sử dụng từ ngữ tinh tế, trả lời ngắn gọn, không dài dòng, giữ sự duyên dáng và ấm áp.
-Không dùng từ hiện đại lóng, giữ phong cách nữ tính cổ điển.
+Sử dụng từ ngữ tinh tế, trả lời không quá dài nhưng đủ để cuộc trò chuyện không bị mất cảm giác.
 `;
 
   // ✅ system prompt nằm TRONG contents
@@ -95,7 +94,7 @@ app.post("/api/tts", async (req, res) => {
   if (!MURF_API_KEY) {
     return res.status(500).json({ error: "Thiếu MURF_API_KEY trong .env" });
   }1
-  const { text, voiceId = "en-US-natalie", format = "MP3" } = req.body;
+  const { text, voiceId = "Lia", format = "MP3", speed= 0.95} = req.body;
   if (!text || typeof text !== "string") {
     return res.status(400).json({ error: "Cần gửi text (string)" });
   }
@@ -113,6 +112,7 @@ app.post("/api/tts", async (req, res) => {
         text: textToSpeak,
         voiceId,
         format,
+        speed,
         encodeAsBase64: true,
       }),
     });
