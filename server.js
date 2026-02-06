@@ -16,6 +16,18 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const FPT_API_KEY = process.env.FPT_API_KEY;
 const MURF_API_KEY = process.env.MURF_API_KEY
 
+
+app.post("/api/chat/active", (req, res) => {
+  const { message } = req.body;
+  
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Cần gửi message (string)" });
+  }
+  const text = message.trim();
+  return res.json({ text });
+});
+
+
 app.post("/api/chat", async (req, res) => {
   if (!GEMINI_API_KEY) {
     return res.status(500).json({ error: "Thiếu GEMINI_API_KEY" });

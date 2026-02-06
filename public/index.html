@@ -384,7 +384,7 @@
       showTyping();
 
       try {
-        const res = await fetch("/api/chat", {
+        const res = await fetch("/api/chat/active", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text, history: history.slice(-20) }),
