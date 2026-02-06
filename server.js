@@ -114,6 +114,7 @@ app.post("/api/tts", async (req, res) => {
         format,
         speed,
         encodeAsBase64: true,
+        language: "vi-VN",
       }),
     });
 
