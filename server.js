@@ -111,10 +111,10 @@ app.post("/api/tts", async (req, res) => {
       body: JSON.stringify({
         text: textToSpeak,
         voiceId,
+        locale: "vi-VN",
         format,
         speed,
         encodeAsBase64: true,
-        language: "vi-VN",
       }),
     });
 
