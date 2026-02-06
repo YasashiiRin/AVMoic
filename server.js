@@ -88,19 +88,31 @@ Sử dụng từ ngữ tinh tế, trả lời không quá dài nhưng đủ đ�
   }
 });
 
-
+function sanitizeVietnameseText(text) {
+  return text
+    // bỏ emoji
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "")
+    // đổi smart quote → quote thường
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    // bỏ ký tự lạ
+    .replace(/[~*_`^]/g, "")
+    // gom whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 app.post("/api/tts", async (req, res) => {
   if (!MURF_API_KEY) {
     return res.status(500).json({ error: "Thiếu MURF_API_KEY trong .env" });
   }1
-  const { text, voiceId = "Lia", format = "MP3", speed= 0.95} = req.body;
+  const { text, voiceId = "Lia", format = "MP3", speed= 1} = req.body;
   if (!text || typeof text !== "string") {
     return res.status(400).json({ error: "Cần gửi text (string)" });
   }
 
   const textToSpeak = text.slice(0, 3000);
-
+  const cleanText = sanitizeVietnameseText(textToSpeak);
   try {
     const response = await fetch("https://api.murf.ai/v1/speech/generate", {
       method: "POST",
@@ -109,7 +121,7 @@ app.post("/api/tts", async (req, res) => {
         "api-key": MURF_API_KEY,
       },
       body: JSON.stringify({
-        text: textToSpeak,
+        text: cleanText,
         voiceId,
         locale: "vi-VN",
         format,
