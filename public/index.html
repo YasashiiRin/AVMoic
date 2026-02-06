@@ -118,9 +118,31 @@
       background: var(--accent);
       color: var(--bg);
     }
+    .btn-speak.playing .wave {
+      animation: wave 0.8s ease-in-out infinite;
+    }
     .btn-speak svg {
       width: 18px;
       height: 18px;
+    }
+
+    .audio-indicator {
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 14px;
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+    }
+    .audio-indicator .meta {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    @keyframes wave {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
     }
 
     #form {
@@ -272,6 +294,28 @@
       document.getElementById("typing-indicator")?.remove();
     }
 
+    function addAudioIndicator(text) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg bot audio-indicator";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-speak";
+      btn.title = "Phát âm thanh";
+      btn.innerHTML = `<svg class="wave" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="8" width="2" height="8" rx="1"/><rect x="9" y="4" width="2" height="16" rx="1"/><rect x="14" y="6" width="2" height="12" rx="1"/><rect x="19" y="8" width="2" height="8" rx="1"/></svg>`;
+      btn.addEventListener("click", () => playTTS(text, btn));
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = "Gemini";
+
+      wrap.appendChild(btn);
+      wrap.appendChild(meta);
+      chat.appendChild(wrap);
+      scrollToBottom();
+      return btn;
+    }
+
     function showError(msg) {
       const el = document.createElement("div");
       el.className = "error";
@@ -351,8 +395,9 @@
         }
 
         const reply = data.text;
-        addMessage("bot", reply);
         history.push({ role: "model", text: reply });
+        const speakBtn = addAudioIndicator(reply);
+        playTTS(reply, speakBtn);
       } catch (e) {
         hideTyping();
         showError(e.message || "Lỗi kết nối.");

@@ -17,30 +17,39 @@ const MURF_API_KEY = process.env.MURF_API_KEY;
 
 app.post("/api/chat", async (req, res) => {
   if (!GEMINI_API_KEY) {
-    return res.status(500).json({ error: "Thiếu GEMINI_API_KEY trong .env" });
+    return res.status(500).json({ error: "Thiếu GEMINI_API_KEY" });
   }
+
   const { message, history = [] } = req.body;
   if (!message || typeof message !== "string") {
     return res.status(400).json({ error: "Cần gửi message (string)" });
   }
 
-  // Define system prompt ở đây (có thể lấy từ .env hoặc hard-code)
   const systemPrompt = `
 Bạn là một cô gái dịu dàng, thanh lịch,
 Sử dụng từ ngữ tinh tế, trả lời ngắn gọn, không dài dòng, giữ sự duyên dáng và ấm áp.
 Không dùng từ hiện đại lóng, giữ phong cách nữ tính cổ điển.
 `;
 
+  // ✅ system prompt nằm TRONG contents
   const contents = [
+    {
+      role: "user",
+      parts: [{ text: systemPrompt.trim() }],
+    },
     ...history.map((m) => ({
       role: m.role === "user" ? "user" : "model",
       parts: [{ text: m.text }],
     })),
-    { role: "user", parts: [{ text: message.trim() }] },
+    {
+      role: "user",
+      parts: [{ text: message.trim() }],
+    },
   ];
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -50,30 +59,29 @@ Không dùng từ hiện đại lóng, giữ phong cách nữ tính cổ điển
           temperature: 0.7,
           maxOutputTokens: 1024,
         },
-        systemInstruction: {
-          role: "model",
-          parts: [{ text: systemPrompt }],
-        },
       }),
     });
 
     if (!response.ok) {
       const err = await response.text();
+      console.error("Gemini raw error:", err);
       return res.status(response.status).json({
         error: "Lỗi Gemini API",
         detail: err,
       });
     }
 
-    const data = await response.json();
+    const data = await response.json();1
     const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
     if (!text) {
       return res.status(500).json({
         error: "Gemini không trả về nội dung",
         raw: data,
       });
     }
+
     res.json({ text });
   } catch (e) {
     console.error("Gemini error:", e);
@@ -82,10 +90,11 @@ Không dùng từ hiện đại lóng, giữ phong cách nữ tính cổ điển
 });
 
 
+
 app.post("/api/tts", async (req, res) => {
   if (!MURF_API_KEY) {
     return res.status(500).json({ error: "Thiếu MURF_API_KEY trong .env" });
-  }
+  }1
   const { text, voiceId = "en-US-natalie", format = "MP3" } = req.body;
   if (!text || typeof text !== "string") {
     return res.status(400).json({ error: "Cần gửi text (string)" });
@@ -138,4 +147,4 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   if (!GEMINI_API_KEY) console.warn("Cảnh báo: Chưa cấu hình GEMINI_API_KEY");
   if (!MURF_API_KEY) console.warn("Cảnh báo: Chưa cấu hình MURF_API_KEY");
-});
+});1
