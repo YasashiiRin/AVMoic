@@ -335,20 +335,23 @@
       btn.disabled = true;
 
       try {
-        const res = await fetch("/api/tts", {
+        const res = await fetch("/api/tts/active", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: text.slice(0, 3000),
-            voiceId: "Lia",
-            format: "MP3",
-            speed: 0.95,
+            text: text.slice(0, 5000),
+            voice: "banmai",
+            format: "mp3",
+            speed: 0,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || data.detail || "Lỗi TTS");
 
-        const audio = new Audio("data:audio/mp3;base64," + data.audio);
+        // for murf
+        // const audio = new Audio("data:audio/mp3;base64," + data.audio);
+        const mime = data.format === "wav" ? "wav" : "mp3";
+        const audio = new Audio("data:audio/" + mime + ";base64," + data.audio);
         currentAudio = audio;
         audio.play();
         audio.onended = () => {
@@ -365,7 +368,7 @@
       } catch (e) {
         btn.classList.remove("playing");
         btn.disabled = false;
-        showError(e.message || "Lỗi khi gọi Murf TTS.");
+        showError(e.message || "Lỗi khi gọi TTS.");
       }
     }
 

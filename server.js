@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MURF_API_KEY = process.env.MURF_API_KEY;
+const FPT_API_KEY = process.env.FPT_API_KEY;
 
 app.post("/api/chat", async (req, res) => {
   if (!GEMINI_API_KEY) {
@@ -70,7 +70,7 @@ Sử dụng từ ngữ tinh tế, trả lời không quá dài nhưng đủ đ�
       });
     }
 
-    const data = await response.json();1
+    const data = await response.json();
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
@@ -102,54 +102,60 @@ function sanitizeVietnameseText(text) {
     .trim();
 }
 
-app.post("/api/tts", async (req, res) => {
-  if (!MURF_API_KEY) {
-    return res.status(500).json({ error: "Thiếu MURF_API_KEY trong .env" });
-  }1
-  const { text, voiceId = "Lia", format = "MP3", speed= 1} = req.body;
+app.post("/api/tts/active", async (req, res) => {
+  if (!FPT_API_KEY) {
+    return res.status(500).json({ error: "Thiếu FPT_API_KEY trong .env (lấy tại console.fpt.ai)" });
+  }
+  const { text, voice = "linhsan", format = "mp3", speed = 0 } = req.body;
   if (!text || typeof text !== "string") {
     return res.status(400).json({ error: "Cần gửi text (string)" });
   }
 
-  const textToSpeak = text.slice(0, 3000);
+  const textToSpeak = text.slice(0, 5000).trim();
   const cleanText = sanitizeVietnameseText(textToSpeak);
+  if (cleanText.length < 3) {
+    return res.status(400).json({ error: "Văn bản tối thiểu 3 ký tự" });
+  }
+
   try {
-    const response = await fetch("https://api.murf.ai/v1/speech/generate", {
+    // Theo doc: POST, header api-key, voice, speed; body = raw text
+    const speedVal = Number(speed);
+    const speedHeader = Number.isFinite(speedVal) ? String(Math.max(-3, Math.min(3, speedVal))) : "";
+    const response = await fetch("https://api.fpt.ai/hmi/tts/v5", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "api-key": MURF_API_KEY,
+        "api-key": FPT_API_KEY,
+        "voice": voice,
+        "speed": speedHeader,
+        "format": format === "wav" ? "wav" : "mp3",
+        "Cache-Control": "no-cache",
       },
-      body: JSON.stringify({
-        text: "Xin chào, hôm nay trời rất đẹp. Em rất vui được trò chuyện cùng anh.",
-        voiceId,
-        locale: "vi-VN",
-        format,
-        speed,
-        encodeAsBase64: true,
-      }),
+      body: cleanText,
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      return res.status(response.status).json({
-        error: "Lỗi Murf API",
-        detail: err,
+    const data = await response.json();
+    if (data.error !== 0) {
+      return res.status(500).json({
+        error: "Lỗi FPT TTS",
+        detail: data.message || data,
       });
     }
 
-    const data = await response.json();
-    const audioBase64 = data?.encodedAudio;
-    if (!audioBase64) {
+    const asyncUrl = data.async;
+    if (!asyncUrl) {
       return res.status(500).json({
-        error: "Murf không trả về audio",
+        error: "FPT không trả về link audio",
         raw: data,
       });
     }
-    res.json({ audio: audioBase64, format });
-  } catch (e) {1
-    console.error("Murf error:", e);
-    res.status(500).json({ error: e.message || "Lỗi kết nối Murf" });
+
+    const audioBuffer = await fetchFptAudioAsync(asyncUrl);
+    const audioBase64 = audioBuffer.toString("base64");
+    const mime = format === "wav" ? "wav" : "mp3";
+    res.json({ audio: audioBase64, format: mime });
+  } catch (e) {
+    console.error("FPT TTS error:", e);
+    res.status(500).json({ error: e.message || "Lỗi kết nối FPT TTS" });
   }
 });
 
@@ -158,6 +164,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  if (!GEMINI_API_KEY) console.warn("Cảnh báo: Chưa cấu hình GEMINI_API_KEY");
-  if (!MURF_API_KEY) console.warn("Cảnh báo: Chưa cấu hình MURF_API_KEY");
-});1
+  if (!FPT_API_KEY) console.warn("Cảnh báo: Chưa cấu hình FPT_API_KEY (console.fpt.ai)");
+});
