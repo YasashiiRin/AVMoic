@@ -123,6 +123,7 @@ app.post("/api/tts", async (req, res) => {
       body: JSON.stringify({
         text: "Xin chào, hôm nay trời rất đẹp. Em rất vui được trò chuyện cùng anh.",
         voiceId,
+        locale: "vi-VN",
         format,
         speed,
         encodeAsBase64: true,
