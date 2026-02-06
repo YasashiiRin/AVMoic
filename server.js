@@ -14,6 +14,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const FPT_API_KEY = process.env.FPT_API_KEY;
+const MURF_API_KEY = process.env.MURF_API_KEY
 
 app.post("/api/chat", async (req, res) => {
   if (!GEMINI_API_KEY) {
